@@ -20,6 +20,7 @@ local gearMem = -1
 local sendNow = false -- When set to true, it send the electrics value at next update
 local sendGearNow = false
 local latestData
+local latestGear
 -- ============= VARIABLES =============
 
 -- TODO : Change "allowed" thing and use if player own vehicle don't send any data instead
@@ -55,7 +56,10 @@ end --ONUPDATE CLOSE
 
 
 local function applyGear(data)
-	if (data) then controller.mainController.shiftToGearIndex(tonumber(data)) end
+	if (data) then
+		controller.mainController.shiftToGearIndex(tonumber(data))
+		latestGear = data
+	end
 end
 
 
@@ -109,6 +113,7 @@ end
 
 local function applyLatestElectrics()
 	applyElectrics(latestData)
+	applyGear(latestGear)
 end
 
 
