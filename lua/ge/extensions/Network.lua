@@ -251,7 +251,7 @@ local function onUpdate(dt)
 					
 				elseif code == "1134" then -- Position
 					if data and serverVehicleID then
-						positionGE.applyPos(data, serverVehicleID)
+						positionGE.applyPos(data, serverVehicleID, socket.gettime())
 					end
 				elseif code == "1135" then -- Position
 					if data and serverVehicleID then
