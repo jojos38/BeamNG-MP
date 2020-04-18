@@ -10,16 +10,17 @@ local M = {}
 local dequeue = require('dequeue')
 
 -- ============= VARIABLES =============
-local posErrorCorrectMul = 3   -- How much acceleration to use for correcting position error
+local posErrorCorrectMul = 2   -- How much acceleration to use for correcting position error
 local maxPosError = 1          -- If position error is larger than this, teleport the vehicle
 local maxPosErrorMul = 0.1     -- Allow larger position error depending on velocity
-local maxAcc = 10              -- If difference between average and current velocity larger than this, clamp it
-local maxAccMul = 0.5          -- Allow larger velocity changes based on velocity
+local maxAcc = 5               -- If difference between average and current velocity larger than this, clamp it
+local maxAccMul = 0.1          -- Allow larger velocity changes based on velocity
 local rotErrorCorrectMul = 2   -- How much acceleration to use for correcting angle error
-local maxRotError = 2          -- If rotation error is larger than this, reset rotation
+local maxRotError = 1          -- If rotation error is larger than this, reset rotation
 local maxRotAcc = 2            -- If difference between average and current rotation velocity larger than this, clamp it
-local maxRotAccMul = 1         -- Allow larger rotation velocity changes depending on velocity
+local maxRotAccMul = 0.1       -- Allow larger rotation velocity changes depending on velocity
 local bufferTime = 0.15        -- How many seconds packets will be kept in buffer
+local minDT = 0.01             -- Minimum time difference (guard against client lag spikes causing very high velocities)
 
 local timer = 0
 local lastPos = vec3(0,0,0)
@@ -56,6 +57,17 @@ end
 
 local function setVehiclePosRot(pos, rot, timestamp)
 	
+	-- Prevent zero length buffer
+	if posBuf:length() < 1 then
+		posBuf:push_right({
+			pos = pos, 
+			rot = rot, 
+			vel = vec3(0,0,0), 
+			rotVel = vec3(0,0,0), 
+			timestamp = 0
+		})
+	end
+	
 	-- Remove packets older than bufferTime from buffer
 	while posBuf:length() > 1 and posBuf:peek_left().timestamp < timestamp-bufferTime do
 		posBuf:pop_left()
@@ -66,14 +78,12 @@ local function setVehiclePosRot(pos, rot, timestamp)
 	local posData = {
 		pos = pos, 
 		rot = rot, 
-		vel = lastPosData and (pos - lastPosData.pos)/guardZero(timestamp - lastPosData.timestamp) or vec3(0,0,0), 
-		rotVel = lastPosData and (rot / lastPosData.rot):toEulerYXZ()/guardZero(timestamp - lastPosData.timestamp) or vec3(0,0,0), 
-		timestamp = timestamp and timestamp or 0
+		vel = (pos - lastPosData.pos)/math.max(timestamp - lastPosData.timestamp, minDT), 
+		rotVel = (rot / lastPosData.rot):toEulerYXZ()/math.max(timestamp - lastPosData.timestamp, minDT), 
+		timestamp = timestamp
 	}
 	
-	posBuf:push_right(posData)
-	
-	-- Average velocity over buffer
+	-- Average velocity over current velocity and buffer
 	local avgVel = vec3(0,0,0)
 	local avgRotVel = vec3(0,0,0)
 	for data in posBuf:iter_left() do
@@ -93,16 +103,21 @@ local function setVehiclePosRot(pos, rot, timestamp)
 		posData.rotVel = avgRotVel + avgRotVel:normalized()*maxRotAcc + avgRotVel*maxRotAccMul
 	end
 	
-	--print("dT = " .. (timestamp-(lastPosData and lastPosData.timestamp or 0)) .. ", BufLen = " .. posBuf:length())
+	local vel = (avgVel+posData.vel)/2
+	local rotVel = (avgRotVel+posData.rotVel)/2
+	
+	posBuf:push_right(posData)
+	
+	--print("dT = " .. (timestamp-lastPosData.timestamp) .. ", BufLen = " .. posBuf:length() .. ", Vel = " .. tostring(vel) .. ", RotVel = " .. tostring(rotVel))
 	
 	local vehPos = vec3(obj:getPosition())
 	local vehRot = quat(obj:getRotation())
 	
-	local posError = (pos - vehPos)
-	local rotError = (rot / vehRot):toEulerYXZ()
+	local posError = (posData.pos - vehPos)
+	local rotError = (posData.rot / vehRot):toEulerYXZ()
 	
 	-- If position or angle errors are larger than limit, teleport the vehicle
-	if posError:length() > (maxPosError + avgVel:length()*maxPosErrorMul) or rotError:length() > maxRotError then
+	if posError:length() > (maxPosError + vel:length()*maxPosErrorMul) or rotError:length() > maxRotError then
 		--print("PosError = " .. tostring(posError) .. ", RotError = " .. tostring(rotError))
 		obj:queueGameEngineLua("vehicleSetPositionRotation("..obj:getID()..","..pos.x..","..pos.y..","..pos.z..","..rot.x..","..rot.y..","..rot.z..","..rot.w..")")
 		electricsVE.applyLatestElectrics() -- Redefine electrics values
@@ -111,9 +126,9 @@ local function setVehiclePosRot(pos, rot, timestamp)
 	end
 	
 	-- Apply velocities
-	velocityVE.setVelocity(avgVel + posError*posErrorCorrectMul)
+	velocityVE.setVelocity(vel + posError*posErrorCorrectMul)
 	-- TODO: shorten this line
-	velocityVE.setAngularVelocity(avgRotVel.y + rotError.y*rotErrorCorrectMul, avgRotVel.z + rotError.z*rotErrorCorrectMul, avgRotVel.x + rotError.x*rotErrorCorrectMul)
+	velocityVE.setAngularVelocity(rotVel.y + rotError.y*rotErrorCorrectMul, rotVel.z + rotError.z*rotErrorCorrectMul, rotVel.x + rotError.x*rotErrorCorrectMul)
 end
 
 M.getVehicleRotation = getVehicleRotation
