@@ -11,12 +11,15 @@ local dequeue = require('dequeue')
 
 -- ============= VARIABLES =============
 local posErrorCorrectMul = 3   -- How much acceleration to use for correcting position error
-local maxPosError = 2          -- If position error is larger than this, teleport the vehicle
+local maxPosError = 1          -- If position error is larger than this, teleport the vehicle
+local maxPosErrorMul = 0.1     -- Allow larger position error depending on velocity
 local maxAcc = 10              -- If difference between average and current velocity larger than this, clamp it
+local maxAccMul = 0.5          -- Allow larger velocity changes based on velocity
 local rotErrorCorrectMul = 2   -- How much acceleration to use for correcting angle error
 local maxRotError = 2          -- If rotation error is larger than this, reset rotation
-local maxRotAcc = 10           -- If difference between average and current rotation velocity larger than this, clamp it
-local bufferTime = 0.1         -- How many seconds packets will be kept in buffer
+local maxRotAcc = 2            -- If difference between average and current rotation velocity larger than this, clamp it
+local maxRotAccMul = 1         -- Allow larger rotation velocity changes depending on velocity
+local bufferTime = 0.15        -- How many seconds packets will be kept in buffer
 
 local timer = 0
 local lastPos = vec3(0,0,0)
@@ -53,6 +56,7 @@ end
 
 local function setVehiclePosRot(pos, rot, timestamp)
 	
+	-- Remove packets older than bufferTime from buffer
 	while posBuf:length() > 1 and posBuf:peek_left().timestamp < timestamp-bufferTime do
 		posBuf:pop_left()
 	end
@@ -69,6 +73,7 @@ local function setVehiclePosRot(pos, rot, timestamp)
 	
 	posBuf:push_right(posData)
 	
+	-- Average velocity over buffer
 	local avgVel = vec3(0,0,0)
 	local avgRotVel = vec3(0,0,0)
 	for data in posBuf:iter_left() do
@@ -79,15 +84,16 @@ local function setVehiclePosRot(pos, rot, timestamp)
 	avgVel = avgVel/posBuf:length()
 	avgRotVel = avgRotVel/posBuf:length()
 	
-	if posData.vel:length() > avgVel:length()+maxAcc then
-		posData.vel = avgVel+avgVel:normalized()*maxAcc
+	-- Limit acceleration, but not deceleration
+	if posData.vel:length() > avgVel:length()+maxAcc + avgVel:length()*maxAccMul then
+		posData.vel = avgVel + avgVel:normalized()*maxAcc + avgVel*maxAccMul
 	end
 	
-	if posData.rotVel:length() > avgRotVel:length()+maxRotAcc then
-		posData.rotVel = avgRotVel+avgRotVel:normalized()*maxRotAcc
+	if posData.rotVel:length() > avgRotVel:length()+maxRotAcc + avgRotVel:length()*maxRotAccMul then
+		posData.rotVel = avgRotVel + avgRotVel:normalized()*maxRotAcc + avgRotVel*maxRotAccMul
 	end
 	
-	print("dT = " .. (timestamp-(lastPosData and lastPosData.timestamp or 0)) .. ", BufLen = " .. posBuf:length())
+	--print("dT = " .. (timestamp-(lastPosData and lastPosData.timestamp or 0)) .. ", BufLen = " .. posBuf:length())
 	
 	local vehPos = vec3(obj:getPosition())
 	local vehRot = quat(obj:getRotation())
@@ -95,7 +101,8 @@ local function setVehiclePosRot(pos, rot, timestamp)
 	local posError = (pos - vehPos)
 	local rotError = (rot / vehRot):toEulerYXZ()
 	
-	if posError:length() > maxPosError or rotError:length() > maxRotError then
+	-- If position or angle errors are larger than limit, teleport the vehicle
+	if posError:length() > (maxPosError + avgVel:length()*maxPosErrorMul) or rotError:length() > maxRotError then
 		--print("PosError = " .. tostring(posError) .. ", RotError = " .. tostring(rotError))
 		obj:queueGameEngineLua("vehicleSetPositionRotation("..obj:getID()..","..pos.x..","..pos.y..","..pos.z..","..rot.x..","..rot.y..","..rot.z..","..rot.w..")")
 		electricsVE.applyLatestElectrics() -- Redefine electrics values
@@ -103,6 +110,7 @@ local function setVehiclePosRot(pos, rot, timestamp)
 		rotError = vec3(0,0,0)
 	end
 	
+	-- Apply velocities
 	velocityVE.setVelocity(avgVel + posError*posErrorCorrectMul)
 	-- TODO: shorten this line
 	velocityVE.setAngularVelocity(avgRotVel.y + rotError.y*rotErrorCorrectMul, avgRotVel.z + rotError.z*rotErrorCorrectMul, avgRotVel.x + rotError.x*rotErrorCorrectMul)
