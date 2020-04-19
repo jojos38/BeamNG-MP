@@ -47,7 +47,8 @@ local function applyPos(data, serverVehicleID, timestamp)
 		pos = vec3(pr[1], pr[2], pr[3])
 		rot = quat(pr[4], pr[5], pr[6], pr[7])
 		
-		debugDrawer:drawSphere(pos:toPoint3F(), 0.2, ColorF(1.0,0.0,0.0,1.0))
+		--DEBUG
+		--debugDrawer:drawSphere(pos:toPoint3F(), 0.2, ColorF(1.0,0.0,0.0,1.0))
 		
 		veh:queueLuaCommand("positionVE.setVehiclePosRot(" .. tostring(pos) .. "," .. tostring(rot) .. "," .. timestamp .. ")")
 	end

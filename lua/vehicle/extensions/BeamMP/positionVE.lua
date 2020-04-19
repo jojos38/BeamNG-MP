@@ -13,11 +13,11 @@ local dequeue = require('dequeue')
 local posErrorCorrectMul = 2   -- How much acceleration to use for correcting position error
 local maxPosError = 1          -- If position error is larger than this, teleport the vehicle
 local maxPosErrorMul = 0.1     -- Allow larger position error depending on velocity
-local maxAcc = 5               -- If difference between average and current velocity larger than this, clamp it
+local maxAcc = 5               -- If difference between average and current velocity larger than this, limit it
 local maxAccMul = 0.1          -- Allow larger velocity changes based on velocity
 local rotErrorCorrectMul = 2   -- How much acceleration to use for correcting angle error
 local maxRotError = 1          -- If rotation error is larger than this, reset rotation
-local maxRotAcc = 2            -- If difference between average and current rotation velocity larger than this, clamp it
+local maxRotAcc = 2            -- If difference between average and current rotation velocity larger than this, limit it
 local maxRotAccMul = 0.1       -- Allow larger rotation velocity changes depending on velocity
 local bufferTime = 0.15        -- How many seconds packets will be kept in buffer
 local minDT = 0.01             -- Minimum time difference (guard against client lag spikes causing very high velocities)
@@ -83,7 +83,7 @@ local function setVehiclePosRot(pos, rot, timestamp)
 		timestamp = timestamp
 	}
 	
-	-- Average velocity over current velocity and buffer
+	-- Average velocity over buffer
 	local avgVel = vec3(0,0,0)
 	local avgRotVel = vec3(0,0,0)
 	for data in posBuf:iter_left() do
@@ -103,6 +103,7 @@ local function setVehiclePosRot(pos, rot, timestamp)
 		posData.rotVel = avgRotVel + avgRotVel:normalized()*maxRotAcc + avgRotVel*maxRotAccMul
 	end
 	
+	-- Smooth velocity using buffer average
 	local vel = (avgVel+posData.vel)/2
 	local rotVel = (avgRotVel+posData.rotVel)/2
 	
