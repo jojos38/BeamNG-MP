@@ -20,7 +20,6 @@ local eventTriggers = {}
 
 
 local function connectToLauncher()
-	print("Connecting to the Launcher for mp session")
 	if launcherConnectionStatus == 0 then -- If launcher is not connected yet
 		local socket = require('socket')
 		TCPSocket = socket.tcp() -- Set socket to TCP
@@ -33,10 +32,11 @@ end
 
 
 
-local function disconnectLauncher()
+local function disconnectLauncher(reconnect)
 	if launcherConnectionStatus > 0 then -- If player were connected
 		TCPSocket:close()-- Disconnect from server
 		launcherConnectionStatus = 0
+		if reconnect then connectToLauncher() end
 	end
 end
 

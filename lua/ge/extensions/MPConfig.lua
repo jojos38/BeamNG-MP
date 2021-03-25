@@ -139,22 +139,6 @@ local function acceptTos()
 end
 
 
-
--- Deprecated
-
---M.setNodesTickrate = setNodesTickrate
---M.getNodesTickrate = getNodesTickrate
---M.setInputsTickrate = setInputsTickrate
---M.getInputsTickrate = getInputsTickrate
---M.setPositionTickrate = setPositionTickrate
---M.getPositionTickrate = getPositionTickrate
---M.setElectricsTickrate = setElectricsTickrate
---M.getElectricsTickrate = getElectricsTickrate
---M.nodesDelay = nodesDelay
---M.inputsDelay = inputsDelay
---M.positionDelay = positionDelay
---M.electricsDelay = electricsDelay
-
 -- Functions
 M.getPlayerServerID = getPlayerServerID
 M.setPlayerServerID = setPlayerServerID
