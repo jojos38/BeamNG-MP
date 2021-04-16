@@ -1,6 +1,6 @@
 --====================================================================================
--- All work by Titch2000 and jojos38.
--- You have no permission to edit, redistribute or upload. Contact us for more info!
+-- All work by Titch2000, jojos38 & 20dka.
+-- You have no permission to edit, redistribute or upload. Contact BeamMP for more info!
 --====================================================================================
 
 
@@ -20,7 +20,6 @@ local eventTriggers = {}
 
 
 local function connectToLauncher()
-	print("Connecting to the Launcher for mp session")
 	if launcherConnectionStatus == 0 then -- If launcher is not connected yet
 		local socket = require('socket')
 		TCPSocket = socket.tcp() -- Set socket to TCP
@@ -33,10 +32,11 @@ end
 
 
 
-local function disconnectLauncher()
+local function disconnectLauncher(reconnect)
 	if launcherConnectionStatus > 0 then -- If player were connected
 		TCPSocket:close()-- Disconnect from server
 		launcherConnectionStatus = 0
+		if reconnect then connectToLauncher() end
 	end
 end
 
@@ -96,7 +96,6 @@ end
 function AddEventHandler(n, f)
 	print("Adding Event Handler: Name = "..tostring(n))
 	table.insert(eventTriggers, {name = n, func = f})
-	dump(eventTriggers)
 end
 
 local HandleNetwork = {
@@ -148,5 +147,5 @@ M.connectionStatus = connectionStatus
 M.CallEvent = handleEvents
 
 
-
+print("MPGameNetwork loaded")
 return M

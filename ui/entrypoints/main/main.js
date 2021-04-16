@@ -226,17 +226,30 @@ angular.module('BeamNG.ui', ['beamng.ui2Ports', 'beamng.core', 'beamng.component
     })
 	
 	// -------------------------------------- BEAMMP -------------------------------------- //
-	.state('menu.multiplayertos', {
-	  url: '/multiplayertos',
-	  templateUrl: 'modules/multiplayertos/tos.html',
-	  controller: 'MultiplayerTOSController as multiplayertos'
-	})
 	
 	.state('menu.multiplayer', {
 	  url: '/multiplayer',
 	  templateUrl: 'modules/multiplayer/multiplayer.html',
 	  controller: 'MultiplayerController as multiplayer'
 	})
+	
+	  .state('menu.multiplayer.tos', {
+	    url: '/mptos',
+	    templateUrl: 'modules/multiplayer/tos.partial.html',
+	    controller: 'MultiplayerTOSController as multiplayertos'
+	  })
+	  
+	  .state('menu.multiplayer.launcher', {
+	    url: '/mplauncher',
+	    templateUrl: 'modules/multiplayer/launcher.partial.html',
+	    controller: 'MultiplayerLauncherController as multiplayerlauncher'
+	  })
+	  
+	  .state('menu.multiplayer.login', {
+	    url: '/mplogin',
+	    templateUrl: 'modules/multiplayer/login.partial.html',
+	    controller: 'MultiplayerLoginController as multiplayerlogin'
+	  })
 
 	  .state('menu.multiplayer.servers', {
 	    url: '/mpservers',
@@ -992,6 +1005,19 @@ function ($animate, $http, logger, $rootScope, $templateCache, $window, $transla
       AppLayout[key] = data[key];
   });
 
+	// -------------------------------------- BEAMMP -------------------------------------- //
+
+	bngApi.engineLua(`MPConfig.getConfig()`, (data) => {
+		if (data != null) {
+			if (!localStorage.getItem("tosAccepted")) {
+				localStorage.setItem("tosAccepted", data.tos);
+			}
+		}
+	});
+
+	// -------------------------------------- BEAMMP -------------------------------------- //
+
+
   // ..... Define all objects attached directly to the window object here
 
   /**
@@ -1120,7 +1146,7 @@ angular.module('beamng.stuff')
     { translateid: 'ui.playmodes.scenarios',    icon: 'material_movie_creation', disabled: false,            targetState: 'scenarios',                      },
     { translateid: 'ui.playmodes.freeroam',     icon: 'material_terrain',        disabled: false,            targetState: 'levels',                         },
     // ------------------------------------ BEAMMP ------------------------------------ //
-	{ translateid: 'ui.playmodes.multiplayer',  icon: 'material_people',         disabled: false,            targetState: 'multiplayertos',                 },
+	{ translateid: 'ui.playmodes.multiplayer',  icon: 'material_people',         disabled: false,            targetState: 'multiplayer',                 },
 	// ------------------------------------ BEAMMP ------------------------------------ //
 	{ translateid: 'ui.playmodes.quickrace',    icon: 'material_alarm_on',       disabled: false,            targetState: 'quickraceOverview',              },
     { translateid: 'ui.playmodes.bus',          icon: 'material_directions_bus', disabled: false,            targetState: 'busRoutes',                      },

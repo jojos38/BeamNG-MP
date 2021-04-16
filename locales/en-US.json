@@ -3917,6 +3917,8 @@
     "ui.options.multiplayer.queueSpawnEdit.tooltip": "If enabled, remote vehicle spawns and edits will be put in a queue, instead of applying instantly",
     "ui.options.multiplayer.queueAuto": "Automatic queue system",
     "ui.options.multiplayer.queueAuto.tooltip": "If enabled, you will only spawn queued vehicles once you come to a stop",
+    "ui.options.multiplayer.queueAutoSkipRemote": "Don't queue if spectating others",
+    "ui.options.multiplayer.queueAutoSkipRemote.tooltip": "If enabled and spectating other players, you will spawn queued vehicles right away",
     "ui.options.multiplayer.luaOptimisations": "Enable optimisations",
     "ui.options.multiplayer.luaOptimisations.tooltip": "If enabled, other vehicles will run limited calculations",
     "ui.options.multiplayer.nameTags": "Hide player nametags",
@@ -3958,6 +3960,9 @@
 	"ui.multiplayer.mapFilterTooltip": "Enable mod size limiter",
 	"ui.multiplayer.modSlider": "Mod size limiter",
 	"ui.multiplayer.modSliderTooltip": "Enable mod size limiter",
+
+	"ui.multiplayerlauncher.lost": "The game is not connected to the launcher! Please start the launcher and press the connect button or restart your game using the launcher. If nothing happen after you clicked the button, please check the launcher console.",
+	"ui.multiplayerlauncher.connect": "Connect",
 
 	"ui.multiplayertos.title": "Rules and terms of service",
 	"ui.multiplayertos.tos": "Terms of service",

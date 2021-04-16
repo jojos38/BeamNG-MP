@@ -1,8 +1,12 @@
--- FIXME
--- This should be removed?
+--====================================================================================
+-- All work by Titch2000.
+-- You have no permission to edit, redistribute or upload. Contact BeamMP for more info!
+--====================================================================================
+
+
 
 local M = {}
-print("mpConfig Initialising...")
+print("Loading mpConfig...")
 
 -- MP VARIABLES
 local Nickname = ""
@@ -99,37 +103,55 @@ local function setFavorites(favstr)
 end
 
 
+local function getConfig()
+  if not FS:directoryExists("BeamMP") then
+    return nil
+  end
 
--- Variables
-M.ShowNameTags = ShowNameTags
-M.Nickname = Nickname
-M.PlayerServerID = PlayerServerID
-M.getPlayerServerID = getPlayerServerID
-M.setPlayerServerID = setPlayerServerID
-M.State = State
-M.nodesDelay = nodesDelay
-M.nodesTickrate = nodesTickrate
-M.positionDelay = positionDelay
-M.positionTickrate = positionTickrate
-M.inputsDelay = inputsDelay
-M.inputsTickrate = inputsTickrate
-M.electricsDelay = electricsDelay
-M.electricsTickrate = electricsTickrate
+  local file = '/BeamMP/config.json'
+  if FS:fileExists(file) then
+    return jsonReadFile(file)
+  else
+	print("config file doesnt exist")
+	return nil
+  end
+end
+
+local function setConfig(settingName, settingVal)
+	local config = getConfig()
+	if not config then config = {} end
+
+	config[settingName] = settingVal
+
+	local favsfile = '/BeamMP/config.json'
+	jsonWriteFile(favsfile, config)
+end
+
+
+local function acceptTos()
+	local config = getConfig()
+	if not config then config = {} end
+
+	config.tos = true
+
+	local favsfile = '/BeamMP/config.json'
+	jsonWriteFile(favsfile, config)
+end
+
 
 -- Functions
-M.setNickname = setNickname
+M.getPlayerServerID = getPlayerServerID
+M.setPlayerServerID = setPlayerServerID
+
 M.getNickname = getNickname
-M.setNodesTickrate = setNodesTickrate
-M.getNodesTickrate = getNodesTickrate
-M.setPositionTickrate = setPositionTickrate
-M.getPositionTickrate = getPositionTickrate
-M.setInputsTickrate = setInputsTickrate
-M.getInputsTickrate = getInputsTickrate
-M.setElectricsTickrate = setElectricsTickrate
-M.getElectricsTickrate = getElectricsTickrate
+M.setNickname = setNickname
 
 M.getFavorites = getFavorites
 M.setFavorites = setFavorites
+M.getConfig = getConfig
+M.setConfig = setConfig
 
-print("mpConfig Loaded.")
+M.acceptTos = acceptTos
+
+print("mpConfig loaded")
 return M

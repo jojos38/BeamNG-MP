@@ -6,7 +6,7 @@
 
 
 local M = {}
-print("positionGE Initialising...")
+print("Loading positionGE...")
 
 
 
@@ -46,6 +46,10 @@ local function applyPos(data, serverVehicleID)
 	local gameVehicleID = MPVehicleGE.getGameVehicleID(serverVehicleID) or -1 -- get gameID
 	local veh = be:getObjectByID(gameVehicleID)
 	if veh then
+		if veh.mpVehicleType == nil then
+			veh:queueLuaCommand("MPVehicleVE.setVehicleType('R')")
+			veh.mpVehicleType = 'R'
+		end
 		veh:queueLuaCommand("positionVE.setVehiclePosRot('"..data.."')")
 	end
 end
@@ -91,4 +95,5 @@ M.setPing           = setPing
 
 
 
+print("positionGE loaded")
 return M
