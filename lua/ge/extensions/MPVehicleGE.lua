@@ -206,9 +206,9 @@ local function applyVehEdit(serverID, data)
 		if configChanged or colorChanged then
 			tableMerge(playerVehicle.config, vehicleConfig)
 
-			dump(configChanged)
-			dump(partsDiff)
-			dump(tuningDiff)
+			--dump(configChanged)
+			--dump(partsDiff)
+			--dump(tuningDiff)
 
 			if configChanged then
 				veh:respawn(serialize(playerVehicle.config))
@@ -244,7 +244,7 @@ local function updateVehicle(serverID, data)
 		local id = string.match(serverID,"^(.*)-")
 		local playerNickname = nickIDMap[id] or "unknown"
 		UI.updateQueue(vehicleSpawnQueue, vehicleEditQueue, true)
-		UI.showNotification('edit received and queued for '..playerNickname)
+		UI.showNotification('Edit received and queued for '..playerNickname)
 	else
 		local currentVeh = be:getPlayerVehicle(0) -- Camera fix
 
@@ -282,7 +282,7 @@ local function applyVehSpawn(event)
 
 	local decodedData     = jsonDecode(event.data)
 	if not decodedData then --JSON decode failed
-		log("E", "onServerVehicleSpawned", "Failed to spawn vehicle from "..playerNickname.."!")
+		log("E", "onServerVehicleSpawned", "Failed to spawn vehicle from "..event.playerNickname.."!")
 		return
 	end
 
@@ -374,15 +374,14 @@ local function onServerVehicleSpawned(playerRole, playerNickname, serverVehicleI
 		eventdata.serverVehicleID = serverVehicleID
 		eventdata.data = data
 
-		if settings.getValue("enableSpawnQueue") then
+		if settings.getValue("enableSpawnQueue") and not (settings.getValue("queueSkipUnicycle") and decodedData.jbm == "unicycle") then
 
-			if not vehicleSpawnQueue[serverVehicleID] then vehicleSpawnQueue[serverVehicleID] = {} end
-			table.insert(vehicleSpawnQueue[serverVehicleID], eventdata)
+			vehicleSpawnQueue[serverVehicleID] = eventdata
 			print('queue enabled adding spawn for '..playerNickname)
-			
+
 			UI.updateQueue(vehicleSpawnQueue, vehicleEditQueue, true)
 
-			UI.showNotification('spawn received and queued for '..playerNickname)
+			UI.showNotification('Spawn received and queued for '..playerNickname)
 
 		else
 
@@ -459,8 +458,16 @@ end
 
 --================================= ON VEHICLE REMOVED (SERVER) ===================================
 local function onServerVehicleRemoved(serverVehicleID)
-	if vehicleSpawnQueue[serverVehicleID] then vehicleSpawnQueue[serverVehicleID] = nil end
-	if vehicleEditQueue[serverVehicleID] then vehicleEditQueue[serverVehicleID] = nil end
+	vehicleEditQueue[serverVehicleID] = nil
+	UI.updateQueue(vehicleSpawnQueue or {}, vehicleEditQueue or {})
+
+	if vehicleSpawnQueue[serverVehicleID] then
+		print("Vehicle "..serverVehicleID.." is still in the queue, can't remove")
+		print(vehicleSpawnQueue[serverVehicleID])
+		vehicleSpawnQueue[serverVehicleID] = nil
+		UI.updateQueue(vehicleSpawnQueue or {}, vehicleEditQueue or {})
+		return
+	end
 
 	local gameVehicleID = getGameVehicleID(serverVehicleID) -- Get game ID
 	if gameVehicleID then
@@ -509,9 +516,16 @@ local function onVehicleSwitched(oldGameVehicleID, newGameVehicleID)
 	if MPCoreNetwork.isMPSession() then -- If TCP connected
 		local newServerVehicleID = getServerVehicleID(newGameVehicleID) -- Get new serverVehicleID of the new vehicle the player is driving
 		if newServerVehicleID then -- If it's not null
-			if not isOwn(newGameVehicleID) and settings.getValue("skipOtherPlayersVehicles") and tableSize(ownMap) > 0 then
+			if not isOwn(newGameVehicleID) and (settings.getValue("skipOtherPlayersVehicles") or jbeamMap[newGameVehicleID] == "unicycle") and tableSize(ownMap) > 0 then
 				be:enterNextVehicle(0, 1) extensions.hook('trackNewVeh')
 			end
+
+			-- enter a remote car as a passenger
+			if not isOwn(newGameVehicleID) and jbeamMap[oldGameVehicleID] == "unicycle" then
+				core_camera.setByName(0,"onboard.rider") -- citybus
+				core_camera.setByName(0,"onboard.passenger") -- everything else
+			end
+
 			MPGameNetwork.send('Om:'..newServerVehicleID)--Network.buildPacket(1, 2122, newID, ""))
 		end
 	end
@@ -770,34 +784,6 @@ local function groundmarkerFollowPlayer(targetName, dontfollow)
 	end
 end
 
-local function onPreRender(dt)
-	local vehicle = be:getPlayerVehicle(0)
-	if not vehicle then return end
-
-	lastQuery = lastQuery - dt
-	if lastQuery <= 0 then
-		lastQuery = 0.2
-		local vehiclePos = vehicle:getPosition()
-		queryRoadNodeToPosition(vehiclePos, 'player')
-		if gmTargetPlayer then groundmarkerToPlayer(gmTargetPlayer) end
-	end
-
-	local playerRoadData = groundmarkerRoads['player']
-	if playerRoadData and playerRoadData.first and playerRoadData.first ~= 'nil' then
-		for target,data in pairs(groundmarkerRoads) do
-			if target ~= 'player' then
-				if data.best then
-					core_groundMarkers.setFocus(data.best)
-				end
-			end
-		end
-	end
-end
-
-
-
-
-
 local function teleportVehToPlayer(targetName)
 	local activeVehicle = be:getPlayerVehicle(0)
 
@@ -841,37 +827,60 @@ local function focusCameraOnPlayer(targetName)
 end
 
 local function applyQueuedEvents()
-	if not vehicleSpawnQueue then return end
+	UI.updateQueue(vehicleSpawnQueue or {}, vehicleEditQueue or {})
+	--if not vehicleSpawnQueue then return end
 
 	local currentVeh = be:getPlayerVehicle(0) -- Camera fix
-
-	for vehicleID, spawns in pairs(vehicleSpawnQueue) do
-		--dump(vehicleID)
-		for k, spawn in pairs(spawns) do
-			print("spawn")
-			applyVehSpawn(spawn)
-		end
+	--dump(vehicleSpawnQueue)
+	for vehicleID, spawn in pairs(vehicleSpawnQueue) do
+		print("spawn")
+		applyVehSpawn(spawn)
 		vehicleSpawnQueue[vehicleID] = nil
-		UI.updateQueue(vehicleSpawnQueue or {}, vehicleEditQueue or {}, false)
+		UI.updateQueue(vehicleSpawnQueue or {}, vehicleEditQueue or {})
 	end
 
-	if not vehicleEditQueue then return end
-
+	--if not vehicleEditQueue then return end
+	--dump(vehicleEditQueue)
 	for vehicleID, edit in pairs(vehicleEditQueue) do
-		--dump(vehicleID)
-		--for k, event in pairs(edits) do
-			print("edit")
-			applyVehEdit(vehicleID, edit)
-			--table.remove(edits, k)
-		--end
+		print("edit")
+		applyVehEdit(vehicleID, edit)
 		vehicleEditQueue[vehicleID] = nil
-		UI.updateQueue(vehicleSpawnQueue or {}, vehicleEditQueue or {}, false)
+		UI.updateQueue(vehicleSpawnQueue or {}, vehicleEditQueue or {})
 	end
 
 	if currentVeh then be:enterVehicle(0, currentVeh) end -- Camera fix
 end
 
+
 local function onUpdate(dt)
+	if MPGameNetwork.connectionStatus() == 1 then -- If TCP connected
+		localCounter = localCounter + dt
+	end
+end
+
+local function onPreRender(dt)
+	local vehicle = be:getPlayerVehicle(0)
+	if vehicle then
+		lastQuery = lastQuery - dt
+		if lastQuery <= 0 then
+			lastQuery = 0.2
+			local vehiclePos = vehicle:getPosition()
+			queryRoadNodeToPosition(vehiclePos, 'player')
+			if gmTargetPlayer then groundmarkerToPlayer(gmTargetPlayer) end
+		end
+
+		local playerRoadData = groundmarkerRoads['player']
+		if playerRoadData and playerRoadData.first and playerRoadData.first ~= 'nil' then
+			for target,data in pairs(groundmarkerRoads) do
+				if target ~= 'player' then
+					if data.best then
+						core_groundMarkers.setFocus(data.best)
+					end
+				end
+			end
+		end
+	end
+
 	if MPGameNetwork.connectionStatus() == 1 then -- If TCP connected
 
 		local cameraPos = vec3(getCameraPosition())
@@ -884,7 +893,7 @@ local function onUpdate(dt)
 		else applyQueuedEvents() end
 
 		if not be:getPlayerVehicle(0) and not commands.isFreeCamera() then
-			commands.setFreeCamera()         -- Fix camera
+			commands.setFreeCamera()		 -- Fix camera
 		end
 
 		if be:getObjectCount() == 0 then return end -- If no vehicle do nothing
@@ -896,7 +905,7 @@ local function onUpdate(dt)
 		end
 
 		for i = 0, be:getObjectCount()-1 do -- For each vehicle
-			local veh = be:getObject(i) --  Get vehicle
+			local veh = be:getObject(i) --	Get vehicle
 			local gameVehicleID = veh:getID()
 			if not isOwn(gameVehicleID) and nicknameMap[gameVehicleID] then
 				local pos = veh:getPosition()
@@ -912,28 +921,30 @@ local function onUpdate(dt)
 					local roleInfo = roleToInfo[nicknameMap[gameVehicleID].role] or roleToInfo['USER']
 					local backColor = roleInfo.backcolor
 
-					if distanceMap[gameVehicleID] > 10 then
-						local d
+					if distanceMap[gameVehicleID] > 10 and settings.getValue("nameTagShowDistance") then
+						local unit
+						local mapEntry = distanceMap[gameVehicleID]
 						if settings.getValue("uiUnitLength") == "imperial" then
-							local ft = distanceMap[gameVehicleID]*3.28084
-							if ft > 5280 then
-								local mi = math.floor( (ft / 5280 * 100) + 0.5) / 100
-								d = tostring(mi).." mi"
+							mapEntry = mapEntry * 3.28084
+							if mapEntry > 5280 then
+								mapEntry = math.floor((mapEntry / 5280 * 100) + 0.5) / 100
+								unit = "mi"
 							else
-								d = tostring(math.floor(ft)).." ft"
+								mapEntry = math.floor(mapEntry)
+								unit = "ft"
 							end
 						else
-							if distanceMap[gameVehicleID] > 1000 then
-								local km = math.floor((distanceMap[gameVehicleID] / 10) + 0.5) / 100
-								d = tostring(km).." km"
+							if mapEntry >= 1000 then
+								mapEntry = math.floor((mapEntry / 10) + 0.5) / 100
+								unit = "km"
 							else
-								d = tostring(math.floor(distanceMap[gameVehicleID])).." m"
+								mapEntry = math.floor(mapEntry)
+								unit = "m"
 							end
 						end
-						dist = " "..d
-					end
 
-					if not settings.getValue("nameTagShowDistance") then dist = "" end
+						dist = string.format(" %s %s", tostring(mapEntry), unit)
+					end
 
 					if settings.getValue("fadeVehicles") then
 						if currveh:getID() == gameVehicleID then veh:setMeshAlpha(1, "", false)
@@ -969,11 +980,8 @@ local function onUpdate(dt)
 				end
 			end
 		end
-		localCounter = localCounter + dt
 	end
 end
-
-
 
 --DEBUG
 M.queryRoadNodeToPosition = queryRoadNodeToPosition

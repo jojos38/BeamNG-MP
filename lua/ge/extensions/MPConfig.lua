@@ -75,14 +75,47 @@ local function getElectricsTickrate()
   return electricsTickrate
 end
 
+local function checkForOldConfig()
+  if not FS:directoryExists("BeamMP") then
+    return false
+  end
+
+  if not FS:directoryExists("settings/BeamMP") then
+    FS:directoryCreate("settings/BeamMP")
+  end
+
+  local movedfiles = false
+
+  local oldfav = '/BeamMP/favorites.json'
+  local newfav = '/settings/BeamMP/favorites.json'
+  if FS:fileExists(oldfav) then
+    FS:copyFile(oldfav, newfav)
+	FS:removeFile(oldfav)
+	movedfiles = true
+  end
+
+  local oldconf = '/BeamMP/config.json'
+  local newconf = '/settings/BeamMP/config.json'
+  if FS:fileExists(oldconf) then
+    FS:copyFile(oldconf, newconf)
+	FS:removeFile(oldconf)
+	movedfiles = true
+  end
+  return movedfiles
+end
+
 
 local function getFavorites()
-  if not FS:directoryExists("BeamMP") then
-    return nil
+  if not FS:directoryExists("settings/BeamMP") then
+    if checkForOldConfig() then
+      return getFavorites()
+    else
+      return nil
+    end
   end
 
   local favs = nil
-  local favsfile = '/BeamMP/favorites.json'
+  local favsfile = '/settings/BeamMP/favorites.json'
   if FS:fileExists(favsfile) then
     favs = jsonReadFile(favsfile)
   else
@@ -93,22 +126,26 @@ end
 
 
 local function setFavorites(favstr)
-  if not FS:directoryExists("BeamMP") then
-    FS:directoryCreate("BeamMP")
+  if not FS:directoryExists("settings/BeamMP") then
+    FS:directoryCreate("settings/BeamMP")
   end
 
   local favs = json.decode(favstr)
-  local favsfile = '/BeamMP/favorites.json'
+  local favsfile = '/settings/BeamMP/favorites.json'
   jsonWriteFile(favsfile, favs)
 end
 
 
 local function getConfig()
-  if not FS:directoryExists("BeamMP") then
-    return nil
+  if not FS:directoryExists("settings/BeamMP") then
+    if checkForOldConfig() then
+      return getConfig()
+    else
+      return nil
+    end
   end
 
-  local file = '/BeamMP/config.json'
+  local file = '/settings/BeamMP/config.json'
   if FS:fileExists(file) then
     return jsonReadFile(file)
   else
@@ -123,7 +160,7 @@ local function setConfig(settingName, settingVal)
 
 	config[settingName] = settingVal
 
-	local favsfile = '/BeamMP/config.json'
+	local favsfile = '/settings/BeamMP/config.json'
 	jsonWriteFile(favsfile, config)
 end
 
@@ -134,7 +171,7 @@ local function acceptTos()
 
 	config.tos = true
 
-	local favsfile = '/BeamMP/config.json'
+	local favsfile = '/settings/BeamMP/config.json'
 	jsonWriteFile(favsfile, config)
 end
 
