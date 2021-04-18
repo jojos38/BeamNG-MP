@@ -60,7 +60,7 @@ angular.module('beamng.stuff')
 			document.getElementById('loginHeader').textContent = 'Missing credentials';
 			return;
 		}	
-		document.getElementById('loginUsername').value = '';
+		document.getElementById('loginPassword').value = '';
 		document.getElementById('loginHeader').textContent = 'Attempting to log in...';
 		bngApi.engineLua("MPCoreNetwork.login('" + JSON.stringify({ username: u, password: p }) + "')");
 	}
@@ -114,10 +114,12 @@ angular.module('beamng.stuff')
 			document.getElementById('servers-btn').click();
 			
 		}
-
+		
+		if (fromState.url == toState.url) return;
 		// Check if the user as aknowledged tos
 		const tosAccepted = localStorage.getItem("tosAccepted");
-		if (!tosAccepted || tosAccepted == "false") {
+		console.log(tosAccepted);
+		if (tosAccepted != "true") {
 			$state.go('menu.multiplayer.tos');
 			return;
 		}
@@ -138,6 +140,7 @@ angular.module('beamng.stuff')
 	});
 	
 	$scope.$on('LauncherConnectionLost', function (event, data) {
+		if ($state.current.url == "/mptos") return;
 		$state.go('menu.multiplayer.launcher');
 	});
 
@@ -166,7 +169,7 @@ angular.module('beamng.stuff')
 		var ip = document.getElementById('directip').value;
 		var port = document.getElementById('directport').value;
 		document.getElementById('LoadingServer').style.display = 'block';
-		bngApi.engineLua(`MPCoreNetwork.connectToServer("${ip}","${port}")`);
+		bngApi.engineLua(`MPCoreNetwork.connectToServer("${ip}", "${port}", {})`);
 	};
 
 	vm.closePopup =  function() {
@@ -238,6 +241,10 @@ angular.module('beamng.stuff')
 	$scope.$on('$destroy', function () {
 		$timeout.cancel(timeOut);
 		logger.debug('[MultiplayerController] destroyed.');
+	});
+	
+	$scope.$on('onServersReceived', async function (event, data) {
+		console.log("Received the servers successfully");
 	});
 }])
 
@@ -904,14 +911,14 @@ async function populateTable(tableTbody, servers, type, searchText, checkIsEmpty
 }
 
 // Used to connect to the backend with ids
-function connect(ip, port) {
+function connect(ip, port, server) {
 	console.log("Attempting to call connect to server...")
 	// Add server to recents
 	addRecent(highlightedServer);
 	// Show the connecting screen
 	document.getElementById('LoadingServer').style.display = 'block'
 	// Connect with ids
-	bngApiScope.engineLua('MPCoreNetwork.connectToServer("' + ip + '", ' + port + ')');
+	bngApiScope.engineLua('MPCoreNetwork.connectToServer("' + ip + '", ' + port + ', "' + JSON.stringify(server) + '")');
 }
 
 // Used to select a row (when it's clicked)
@@ -938,7 +945,7 @@ function select(row, bngApi) {
 
 	// Add the connect button
 	var connectToServerButton = document.getElementById('serverconnect-button');
-	connectToServerButton.onclick = function() { connect(row.server.ip, row.server.port) };
+	connectToServerButton.onclick = function() { connect(row.server.ip, row.server.port, row.server) };
 	
 	if (server.favorite) {
 		var removeFavButton = document.getElementById('removeFav-button');

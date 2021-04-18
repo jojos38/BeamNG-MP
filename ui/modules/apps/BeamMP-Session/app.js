@@ -10,10 +10,6 @@ app.directive('multiplayersession', ['UiUnits', function (UiUnits) {
 }]);
 
 app.controller("Session", ['$scope', 'bngApi', function ($scope, bngApi) {
-	$scope.init = function() {
-		bngApi.engineLua('UI.ready("MP-SESSION")'); // needed to get the server name
-	};
-
 	$scope.mpquit = function() {
 		bngApi.engineLua('MPCoreNetwork.resetSession(1)');
 	};
@@ -31,6 +27,7 @@ app.controller("Session", ['$scope', 'bngApi', function ($scope, bngApi) {
 	};
 
 	$scope.$on('setPing', function (event, ping) {
+		console.log("ok");
 		document.getElementById("Session-Ping").innerHTML = ping;
 	});
 

@@ -32,17 +32,17 @@ end
 
 
 
-local function disconnectLauncher(reconnect)
+local function disconnectLauncher()
 	if launcherConnectionStatus > 0 then -- If player were connected
 		TCPSocket:close()-- Disconnect from server
 		launcherConnectionStatus = 0
-		if reconnect then connectToLauncher() end
 	end
 end
 
 
 
 local function sendData(s)
+	if not TCPSocket then return end
 	local r = TCPSocket:send(string.len(s)..'>'..s)
 	if settings.getValue("showDebugOutput") == true then
 		print('[MPGameNetwork] Sending Data ('..r..'): '..s)
@@ -111,7 +111,7 @@ local HandleNetwork = {
 	['L'] = function(params) UI.showNotification(params) end, -- Display custom notification
 	['S'] = function(params) sessionData(params) end, -- Update Session Data
 	['E'] = function(params) handleEvents(params) end, -- Event For another Resource
-	['T'] = function(params) MPCoreNetwork.resetSession('true') end, -- Event For another Resource
+	['T'] = function(params) MPCoreNetwork.resetSession(true) end, -- Event For another Resource
 	['C'] = function(params) UI.chatMessage(params) end, -- Chat Message Event
 }
 

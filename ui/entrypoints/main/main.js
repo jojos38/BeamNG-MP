@@ -1004,19 +1004,6 @@ function ($animate, $http, logger, $rootScope, $templateCache, $window, $transla
       AppLayout[key] = data[key];
   });
 
-	// -------------------------------------- BEAMMP -------------------------------------- //
-
-	bngApi.engineLua(`MPConfig.getConfig()`, (data) => {
-		if (data != null) {
-			if (!localStorage.getItem("tosAccepted")) {
-				localStorage.setItem("tosAccepted", data.tos);
-			}
-		}
-	});
-
-	// -------------------------------------- BEAMMP -------------------------------------- //
-
-
   // ..... Define all objects attached directly to the window object here
 
   /**
@@ -1424,7 +1411,8 @@ $scope.$on('requestUIInitialised', () => {
 	// -------------------------------------------------------------------- BEAMMP --------------------------------------------------------------------//
 	multiplayer: [
       { translateid: 'ui.dashboard.play',          icon: 'play_arrow', state: '.', action: () => $timeout(() => $scope.$emit('MenuToggle'))},
-      { translateid: 'ui.dashboard.help',          icon: 'help',                   state: 'menu.help'          },
+      { translateid: 'ui.dashboard.drive',         icon: 'layers',                 state: 'menu.playmodes'     },
+	  { translateid: 'ui.dashboard.help',          icon: 'help',                   state: 'menu.help'          },
       { translateid: 'ui.dashboard.vehicles',      icon: 'directions_car',         state: 'menu.vehicles'      },
       { translateid: 'ui.dashboard.vehicleconfig', icon: 'settings_applications',  state: 'menu.vehicleconfig.parts' },
       { translateid: 'ui.dashboard.environment',   icon: 'cloud_queue',            state: 'menu.environment'   },

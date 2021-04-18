@@ -403,7 +403,7 @@ end
 --================================= ON VEHICLE SPAWNED (CLIENT) ===================================
 local function onVehicleSpawned(gameVehicleID)
 
-	if not MPCoreNetwork.isMPSession() then return end -- do nothing if singleplayer
+	if MPCoreNetwork.isMP() == 0 then return end -- do nothing if singleplayer
 
 	local veh = be:getObjectByID(gameVehicleID)
 
@@ -513,7 +513,7 @@ end
 --======================= ON VEHICLE SWITCHED (CLIENT) =======================
 local function onVehicleSwitched(oldGameVehicleID, newGameVehicleID)
 	--print("Vehicle switched from "..oldID.." to "..newID)
-	if MPCoreNetwork.isMPSession() then -- If TCP connected
+	if MPCoreNetwork.isMP() == 2 then -- If TCP connected
 		local newServerVehicleID = getServerVehicleID(newGameVehicleID) -- Get new serverVehicleID of the new vehicle the player is driving
 		if newServerVehicleID then -- If it's not null
 			if not isOwn(newGameVehicleID) and (settings.getValue("skipOtherPlayersVehicles") or jbeamMap[newGameVehicleID] == "unicycle") and tableSize(ownMap) > 0 then
@@ -638,7 +638,7 @@ end
 
 local function saveDefaultRequest()
 	local currentVehicle = be:getPlayerVehicle(0)
-	if not MPCoreNetwork.isMPSession() or currentVehicle and isOwn(currentVehicle:getID()) then
+	if MPCoreNetwork.isMP() == 0 or currentVehicle and isOwn(currentVehicle:getID()) then
 		extensions.core_vehicle_partmgmt.savedefault()
 		print("Request to save car DONE")
 	else
@@ -648,7 +648,7 @@ local function saveDefaultRequest()
 end
 
 local function spawnDefaultRequest()
-	if not MPCoreNetwork.isMPSession() then core_vehicles.spawnDefault(); extensions.hook("trackNewVeh"); return; end
+	if MPCoreNetwork.isMP() == 0 then core_vehicles.spawnDefault(); extensions.hook("trackNewVeh"); return; end
 
 
 	local currentVehicle = be:getPlayerVehicle(0)
@@ -696,7 +696,7 @@ local function spawnRequest(model, config, colors)
 end
 
 local function saveConfigRequest(configfilename)
-	if not MPCoreNetwork.isMPSession() then extensions.core_vehicle_partmgmt.saveLocal(configfilename); return; end
+	if MPCoreNetwork.isMP() == 0 then extensions.core_vehicle_partmgmt.saveLocal(configfilename); return; end
 
 	local currentVehicle = be:getPlayerVehicle(0)
 
@@ -982,6 +982,7 @@ local function onPreRender(dt)
 		end
 	end
 end
+
 
 --DEBUG
 M.queryRoadNodeToPosition = queryRoadNodeToPosition

@@ -7,33 +7,28 @@
 
 local M = {}
 print("Loading MPModManager...")
+local mods = {"beammp"}
 
 
 
-local timer = 0
-local serverMods = {}
-local mods = {"multiplayerbeammp", "beammp"}
-local backupAllowed = true
-
-
-
-local function IsModAllowed(n)
-	for k,v in pairs(mods) do
-		if string.lower(v) == string.lower(n) then
-			return true
-		end
-	end
-	for k,v in pairs(serverMods) do
-		if string.lower(v) == string.lower(n) then
-			return true
-		end
-	end
-	return false
+function string.starts(fullString, start)
+   return string.sub(fullString, 1, string.len(start)) == start
 end
 
 
 
-local function checkMod(mod)
+--[[ local function IsModAllowed(modname)
+	for _, v in pairs(mods) do
+		if v == modname then
+			return true
+		end
+	end
+	return false
+end ]]
+
+
+
+--[[ local function checkMod(mod)
 	local modname = mod.modname
 	local modAllowed = IsModAllowed(modname)
 	if not modAllowed and mod.active then -- This mod is not allowed to be running
@@ -67,51 +62,33 @@ local function checkMod(mod)
 			MPCoreNetwork.modLoaded(modname)
 		end
 	end
-end
+end ]]
 
 
 
-local function checkAllMods()
-	for modname, mod in pairs(core_modmanager.getModList()) do
+--[[ local function checkAllMods()
+	for modname, mod in pairs(readJsonFile("/mods/db.json").mods) do
+		print(modname)
 		checkMod(mod)
 		print("Checking mod "..mod.modname)
 	end
-end
+end ]]
 
 
 
 local function cleanUpSessionMods()
-	-- At this point isMPSession is false so we disable mods backup so that
-	-- the call doesn't backup when it shouldn't
-	backupAllowed = false
-	local hadMods = false
-	for k,v in pairs(serverMods) do
-		hadMods = true
-		core_modmanager.deactivateMod(string.lower(v))
-		if string.match(string.lower(v), 'multiplayer') then
-			core_modmanager.deleteMod(string.lower(v))
+	log('M', "cleanUpSessionMods", "Deleting all multiplayer mods")
+	local modsDB = jsonReadFile("mods/db.json")
+	if modsDB then
+		local modsFound = false
+		for modname, mod in pairs(modsDB.mods) do
+			if mod.dirname == "/mods/multiplayer/" and modname ~= "multiplayerbeammp" then
+				core_modmanager.deleteMod(modname)
+				modsFound = true
+			end
 		end
+		if modsFound then Lua:requestReload() end -- reload Lua to make sure we don't have any leftover GE files
 	end
-	backupAllowed = true
-	if hadMods then Lua:requestReload() end-- reload Lua to make sure we don't have any leftover GE files
-end
-
-
-
-local function setServerMods(receivedMods)
-	print("Server Mods Set:")
-	dump(mods)
-	serverMods = receivedMods
-	for k,v in pairs(serverMods) do
-		serverMods[k] = 'multiplayer'..v
-	end
-end
-
-
-
-local function showServerMods()
-	print(serverMods)
-	dump(serverMods)
 end
 
 
@@ -147,76 +124,59 @@ end
 
 
 -- Called from beammp\lua\ge\extensions\core
-local function onModStateChanged(mod)
-	-- The function makes two calls, one with a table and one with the mod name
-	-- We only want the table not the mod name call
-	if type(mod) ~= "table" then return end
-	if MPCoreNetwork.isGoingMPSession() or MPCoreNetwork.isMPSession() then
-		checkMod(mod)
+--[[ local function onFileChanged(file)
+	if file == "/mods/db.json" then -- and MPCoreNetwork.isMP() == 2 then
+		checkAllMods()
+	end
+end ]]
+
+
+
+--[[ local function onClientStartMission(mission)
+	if MPCoreNetwork.isMP() == 2 then
+		checkAllMods() -- Checking all the mods
+	end
+	-- Checking all the mods again because BeamNG.drive have a bug with mods not deactivating
+end ]]
+
+
+
+local function setMods(modsString)
+	log('M', "setMods", "Mods string received "..modsString)
+	if (modsString) then
+		for mod in string.gmatch(modsString, "([^;]+)") do
+			local modFileName = string.lower(mod:gsub("Resources/Client/",""):gsub(".zip",""):gsub(";",""))
+			table.insert(mods, modFileName)
+		end
 	end
 end
 
 
 
 local function onInit()
-	-- When the game inits we restore the db.json which deletes it and then back it up.
-	-- If the game was closed correctly, there should be no db-backup.json file which mean
-	-- that restoreLoadedMods won't do anything. Therefor not restoring a wrong backup
-	restoreLoadedMods()
-	backupLoadedMods()
+	cleanUpSessionMods()
+	print("MPModManager loaded")
 end
 
 
 
-local function onExit() -- Called when the user exits the game
+--[[ Called when the user exits the game ]]
+local function onExit()
 	restoreLoadedMods() -- Restore the mods and delete db-backup.json when we quit the game
 	-- Don't add isMPSession checking because onClientEndMission is called before!
 end
 
 
 
-local function onClientStartMission(mission)
-	if MPCoreNetwork.isMPSession() then
-		checkAllMods() -- Checking all the mods
-	end
-	-- Checking all the mods again because BeamNG.drive have a bug with mods not deactivating
-end
-
-
-
-local function onClientEndMission(mission)
-	-- We restore the db.json before lua reloads because on reload the db.json get backup up
-	-- if we were connected to a server this would cause a backup of the db.json with all mods disabled
-	-- By doing this, lua activate itself the mods after the reload so we don't even need
-	-- to enable the mods ourself.
-	restoreLoadedMods()
-end
-
-
-
-local function modsDatabaseChanged()
-	if not MPCoreNetwork.isMPSession() then
-		backupLoadedMods()
-	end
-end
-
-
-
-M.modsDatabaseChanged = modsDatabaseChanged
-M.onClientEndMission = onClientEndMission
-M.onClientStartMission = onClientStartMission
-M.modsDatabaseChanged = modsDatabaseChanged
-M.onModStateChanged = onModStateChanged
+M.setMods = setMods
+M.onFileChanged = onFileChanged
 M.backupLoadedMods = backupLoadedMods
 M.restoreLoadedMods = restoreLoadedMods
 M.cleanUpSessionMods = cleanUpSessionMods
-M.showServerMods = showServerMods
 M.setServerMods = setServerMods
-M.checkAllMods = checkAllMods
 M.onExit = onExit
 M.onInit = onInit
 
 
 
-print("MPModManager loaded")
 return M

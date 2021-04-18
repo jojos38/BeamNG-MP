@@ -255,8 +255,8 @@ angular.module('beamng.stuff')
   // --------------------------------------- BEAMMP --------------------------------------- //
 
   vm.isMPSession = false;
-  bngApi.engineLua('MPCoreNetwork.isMPSession()', function (str) {
-    $scope.$evalAsync(() => { vm.isMPSession = str; vm.isNotMPSession = !str; });
+  bngApi.engineLua('MPCoreNetwork.isMP()', function (str) {
+    $scope.$evalAsync(() => { vm.isMPSession = (str == 2); });
   });
 
   // --------------------------------------- BEAMMP --------------------------------------- //
@@ -408,8 +408,8 @@ function (logger, $scope, $state, $timeout, $stateParams, $rootScope, bngApi, In
 
   vm.isMPSession = false;
   vm.isNotMPSession = false;
-  bngApi.engineLua('MPCoreNetwork.isMPSession()', function (str) {
-    $scope.$evalAsync(() => { vm.isMPSession = str; vm.isNotMPSession = !str; });
+  bngApi.engineLua('MPCoreNetwork.isMP()', function (str) {
+    $scope.$evalAsync(() => { vm.isMPSession = (str == 2); });
   });
 
   // --------------------------------------- BEAMMP --------------------------------------- //
